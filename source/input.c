@@ -2508,6 +2508,32 @@ int input_read_parameters_species(struct file_content * pfc,
     has_cdm_userdefined = _TRUE_;
   }
   class_test(pba->Omega0_cdm<0,errmsg, "You cannot set the cold dark matter density to negative values.");
+  /* Q-Rubin V3.2 Parameter Parser */
+  class_call(parser_read_double(pfc, "M_Q", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->M_Q = param1; }
+  class_call(parser_read_double(pfc, "a_t", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->a_t = param1; }
+  class_call(parser_read_double(pfc, "n_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->n_qrubin = param1; }
+  class_call(parser_read_double(pfc, "A0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->A0_qrubin = param1; }
+  class_call(parser_read_double(pfc, "B0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->B0_qrubin = param1; }
+  class_call(parser_read_double(pfc, "phi0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->phi0_qrubin = param1; }
+  class_call(parser_read_double(pfc, "tau_Q", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->tau_Q = param1; }
+  class_call(parser_read_double(pfc, "Gamma0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->Gamma0_qrubin = param1; }
+  class_call(parser_read_double(pfc, "S0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->S0_qrubin = param1; }
+  class_call(parser_read_double(pfc, "D0_qrubin", &param1, &flag1, errmsg), errmsg, errmsg);
+  if (flag1 == _TRUE_) { pba->D0_qrubin = param1; }
+  if (pba->M_Q != 0.0 && (pba->A0_qrubin != 0.0 || pba->B0_qrubin != 0.0 || pba->S0_qrubin != 0.0 || pba->Gamma0_qrubin != 0.0)) {
+    pba->has_qrubin = _TRUE_;
+  } else {
+    pba->has_qrubin = _FALSE_;
+  }
 
   /** 4) (Second part) Omega_0_m (total non-relativistic) */
   class_call(parser_read_double(pfc,"Omega_m",&param1,&flag1,errmsg),
@@ -5831,6 +5857,17 @@ int input_default_params(struct background *pba,
 
   /** 4) CDM density */
   pba->Omega0_cdm = 0.1201075/pow(pba->h,2);
+  pba->M_Q = 0.0;
+  pba->a_t = 0.0;
+  pba->n_qrubin = 0.0;
+  pba->A0_qrubin = 0.0;
+  pba->B0_qrubin = 0.0;
+  pba->phi0_qrubin = 1.0;
+  pba->tau_Q = 1.0;
+  pba->Gamma0_qrubin = 0.0;
+  pba->S0_qrubin = 0.0;
+  pba->D0_qrubin = 0.0;
+  pba->has_qrubin = _FALSE_;
 
   /** 5) ncdm sector */
   /** 5.a) Number of distinct species */

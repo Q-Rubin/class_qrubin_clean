@@ -472,6 +472,8 @@ struct perturbations_vector
   int index_pt_delta_b;   /**< baryon density */
   int index_pt_theta_b;   /**< baryon velocity */
   int index_pt_delta_cdm; /**< cdm density */
+  int index_pt_delta_phi_qrubin;
+  int index_pt_dphi_qrubin;
   int index_pt_theta_cdm; /**< cdm velocity */
   int index_pt_delta_idm; /**< idm density */
   int index_pt_theta_idm; /**< idm velocity */

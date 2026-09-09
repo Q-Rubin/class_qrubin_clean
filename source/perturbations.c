@@ -3849,6 +3849,8 @@ int perturbations_vector_init(
 
   /** - define all indices in this new vector (depends on approximation scheme, described by the input structure ppw-->pa) */
 
+  ppv->index_pt_delta_phi_qrubin = -1;
+  ppv->index_pt_dphi_qrubin = -1;
   index_pt = 0;
 
   if (_scalars_) {
@@ -3918,6 +3920,8 @@ int perturbations_vector_init(
     /* cdm */
 
     class_define_index(ppv->index_pt_delta_cdm,pba->has_cdm,index_pt,1); /* cdm density */
+  class_define_index(ppv->index_pt_delta_phi_qrubin, pba->has_qrubin, index_pt, 1);
+  class_define_index(ppv->index_pt_dphi_qrubin, pba->has_qrubin, index_pt, 1);
     class_define_index(ppv->index_pt_theta_cdm,pba->has_cdm && (ppt->gauge == newtonian),index_pt,1); /* cdm velocity */
 
     /* idm */
@@ -4368,6 +4372,15 @@ int perturbations_vector_init(
 
         ppv->y[ppv->index_pt_delta_cdm] =
           ppw->pv->y[ppw->pv->index_pt_delta_cdm];
+          if (pba->has_qrubin == _TRUE_ && ppv->index_pt_delta_phi_qrubin >= 0) {
+            if (pa_old == NULL || ppw->pv == NULL || ppw->pv->index_pt_delta_phi_qrubin < 0) {
+              ppv->y[ppv->index_pt_delta_phi_qrubin] = 0.0;
+              ppv->y[ppv->index_pt_dphi_qrubin] = 0.0;
+            } else {
+              ppv->y[ppv->index_pt_delta_phi_qrubin] = ppw->pv->y[ppw->pv->index_pt_delta_phi_qrubin];
+              ppv->y[ppv->index_pt_dphi_qrubin] = ppw->pv->y[ppw->pv->index_pt_dphi_qrubin];
+            }
+          }
 
         if (ppt->gauge == newtonian) {
           ppv->y[ppv->index_pt_theta_cdm] =
@@ -5442,6 +5455,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       if (pba->has_cdm == _TRUE_) {
         ppw->pv->y[ppw->pv->index_pt_delta_cdm] = 3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g]; /* cdm density */
+      if (pba->has_qrubin == _TRUE_ && ppw->pv->index_pt_delta_phi_qrubin >= 0) { ppw->pv->y[ppw->pv->index_pt_delta_phi_qrubin] = 0.0; ppw->pv->y[ppw->pv->index_pt_dphi_qrubin] = 0.0; }
         /* cdm velocity vanishes in the synchronous gauge */
       }
 
@@ -9226,6 +9240,46 @@ int perturbations_derivs(double tau,
         dy[pv->index_pt_delta_cdm] = -(y[pv->index_pt_theta_cdm]+metric_continuity); /* cdm density */
 
         dy[pv->index_pt_theta_cdm] = - a_prime_over_a*y[pv->index_pt_theta_cdm] + metric_euler; /* cdm velocity */
+
+        /* --- Q-Rubin V3.2 Perturbation Coupling (Phase 3 Audit Corrected) --- */
+        if (pba->has_qrubin == _TRUE_ && pba->has_cdm == _TRUE_ && pv->index_pt_delta_phi_qrubin >= 0) {
+          double delta_phi_q = y[pv->index_pt_delta_phi_qrubin];
+          double ddelta_phi_q = y[pv->index_pt_dphi_qrubin];
+          
+          double W_c = qrubin_activation(a, pba->a_t, pba->n_qrubin);
+          double A_c = pba->A0_qrubin * W_c;
+          double B_c = pba->B0_qrubin * W_c;
+          double Gamma_c = pba->Gamma0_qrubin * W_c;
+          
+          double rho_cdm = pvecback[pba->index_bg_rho_cdm];
+          double Q_bar = pvecback[pba->index_bg_Q_over_H_qrubin] * (a_prime_over_a / a);
+          double dphi_bg_dtau = pvecback[pba->index_bg_dphi_qrubin] * a_prime_over_a;
+          
+          double metric_psi = (k2 > 0.0) ? (metric_euler / k2) : 0.0;
+          
+          /* Phase 2: Equation-exact delta Q and scalar transfer potential f */
+          double delta_Q = pow(pba->M_Q, 5.0) * B_c * delta_phi_q - (pow(pba->M_Q, 4.0) * A_c / a) * (ddelta_phi_q - metric_psi * dphi_bg_dtau);
+          double f_transfer = (pow(pba->M_Q, 4.0) * A_c / a) * delta_phi_q;
+          
+          /* Phase 3: Scalar velocity divergence (theta_Q) with zero-division regulator */
+          double theta_q = 0.0;
+          if (fabs(dphi_bg_dtau) > 1e-16) {
+              theta_q = k2 * delta_phi_q / dphi_bg_dtau;
+          }
+          
+          if (rho_cdm > 0.0) {
+            /* Eq. 30: Receiving Sector Continuity Perturbation */
+            dy[pv->index_pt_delta_cdm] += (a / rho_cdm) * (delta_Q - Q_bar * y[pv->index_pt_delta_cdm] + Q_bar * metric_psi);
+            /* Eq. 31: Receiving Sector Euler Perturbation (momentum conservation restored) */
+            if (pv->index_pt_theta_cdm >= 0) {
+              dy[pv->index_pt_theta_cdm] += (a / rho_cdm) * (Q_bar * (theta_q - y[pv->index_pt_theta_cdm]) - k2 * f_transfer);
+            }
+          }
+          
+          /* Eq. 32: Linearized Hyperbolic Relaxation-Diffusion Equation */
+          dy[pv->index_pt_delta_phi_qrubin] = ddelta_phi_q;
+          dy[pv->index_pt_dphi_qrubin] = - (2.0 * a_prime_over_a + a / pba->tau_Q) * ddelta_phi_q - ((a * a * Gamma_c + a * a * pba->D0_qrubin * k2) / pba->tau_Q) * delta_phi_q;
+        }
       }
 
       /** - ----> synchronous gauge: cdm density only (velocity set to zero by definition of the gauge) */

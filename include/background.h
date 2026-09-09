@@ -76,6 +76,16 @@ struct background
   double Omega0_dcdmdr;   /**< \f$ \Omega_{0 dcdm}+\Omega_{0 dr} \f$: decaying cold dark matter (dcdm) decaying to dark radiation (dr) */
   double Omega_ini_dcdm;  /**< \f$ \Omega_{ini,dcdm} \f$: rescaled initial value for dcdm density (see 1407.2418 for definitions) */
   double Gamma_dcdm;      /**< \f$ \Gamma_{dcdm} \f$: decay constant for decaying cold dark matter */
+  double M_Q;
+  double a_t;
+  double n_qrubin;
+  double A0_qrubin;
+  double B0_qrubin;
+  double phi0_qrubin;
+  double tau_Q;
+  double Gamma0_qrubin;
+  double S0_qrubin;
+  double D0_qrubin;
   double tau_dcdm;
 
   int N_ncdm;                            /**< Number of distinguishable ncdm species */
@@ -164,6 +174,10 @@ struct background
   int index_bg_rho_g;         /**< photon density */
   int index_bg_rho_b;         /**< baryon density */
   int index_bg_rho_cdm;       /**< cdm density */
+  int index_bg_W_qrubin;
+  int index_bg_Q_over_H_qrubin;
+  int index_bg_phi_qrubin;
+  int index_bg_dphi_qrubin;
   int index_bg_rho_idm;       /**< idm density */
   int index_bg_rho_lambda;    /**< cosmological constant density */
   int index_bg_rho_fld;       /**< fluid density */
@@ -255,6 +269,9 @@ struct background
   int index_bi_rho_dcdm;/**< {B} dcdm density */
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
+  int index_bi_rho_cdm;
+  int index_bi_phi_qrubin;
+  int index_bi_dphi_qrubin;
   int index_bi_phi_scf;       /**< {B} scalar field value */
   int index_bi_phi_prime_scf; /**< {B} scalar field derivative wrt conformal time */
 
@@ -282,6 +299,7 @@ struct background
   short has_cdm;       /**< presence of cold dark matter? */
   short has_idm;       /**< presence of interacting dark matter with photons, baryons, and idr */
   short has_dcdm;      /**< presence of decaying cold dark matter? */
+  short has_qrubin;
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
   short has_ncdm;      /**< presence of non-cold dark matter? */
@@ -629,6 +647,13 @@ extern "C" {
 
 //@}
 
+
+
+static inline double qrubin_activation(double a, double a_t, double n) {
+    if (n <= 0.0) return 0.0;
+    if (a_t <= 0.0) return 1.0;
+    return 1.0 / (1.0 + pow(a_t / a, n));
+}
 
 #endif
 /* @endcond */

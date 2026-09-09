@@ -437,6 +437,11 @@ int background_functions(
   /* cdm */
   if (pba->has_cdm == _TRUE_) {
     pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
+  if (pvecback_B != NULL && pba->has_qrubin == _TRUE_) {
+    if (pba->has_cdm == _TRUE_) pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm] / pow(a, 3.0);
+    pvecback[pba->index_bg_phi_qrubin] = pvecback_B[pba->index_bi_phi_qrubin];
+    pvecback[pba->index_bg_dphi_qrubin] = pvecback_B[pba->index_bi_dphi_qrubin];
+  }
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
@@ -577,6 +582,15 @@ int background_functions(
       that densities are all expressed in units of \f$ [3c^2/8\pi G] \f$, ie
       \f$ \rho_{class} = [8 \pi G \rho_{physical} / 3 c^2]\f$ */
   pvecback[pba->index_bg_H] = sqrt(rho_tot-pba->K/a/a);
+  if (pba->has_qrubin == _TRUE_) {
+    double phi_q = pvecback[pba->index_bg_phi_qrubin];
+    double dphi_q = pvecback[pba->index_bg_dphi_qrubin];
+    double W_c = qrubin_activation(a, pba->a_t, pba->n_qrubin);
+    pvecback[pba->index_bg_W_qrubin] = W_c;
+    double H_c = pvecback[pba->index_bg_H];
+    double Q_bar_c = pow(pba->M_Q, 5.0) * (pba->B0_qrubin * W_c) * phi_q - pow(pba->M_Q, 4.0) * (pba->A0_qrubin * W_c) * H_c * dphi_q;
+    pvecback[pba->index_bg_Q_over_H_qrubin] = (H_c > 0.0) ? (Q_bar_c / H_c) : 0.0;
+  }
 
   /** - compute derivative of H with respect to conformal time */
   pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
@@ -979,6 +993,8 @@ int background_indices(
   pba->has_idm = _FALSE_;
   pba->has_ncdm = _FALSE_;
   pba->has_dcdm = _FALSE_;
+  pba->has_qrubin = _FALSE_;
+  if (pba->M_Q != 0. && (pba->S0_qrubin != 0. || pba->B0_qrubin != 0. || pba->A0_qrubin != 0. || pba->Gamma0_qrubin != 0.)) pba->has_qrubin = _TRUE_;
   pba->has_dr = _FALSE_;
   pba->has_scf = _FALSE_;
   pba->has_lambda = _FALSE_;
@@ -1046,6 +1062,10 @@ int background_indices(
 
   /* - index for rho_cdm */
   class_define_index(pba->index_bg_rho_cdm,pba->has_cdm,index_bg,1);
+  class_define_index(pba->index_bg_W_qrubin,pba->has_qrubin,index_bg,1);
+  class_define_index(pba->index_bg_Q_over_H_qrubin,pba->has_qrubin,index_bg,1);
+  class_define_index(pba->index_bg_phi_qrubin,pba->has_qrubin,index_bg,1);
+  class_define_index(pba->index_bg_dphi_qrubin,pba->has_qrubin,index_bg,1);
 
   /* - index for rho_idm  */
   class_define_index(pba->index_bg_rho_idm,pba->has_idm,index_bg,1);
@@ -1164,6 +1184,9 @@ int background_indices(
 
   /* -> energy density in fluid */
   class_define_index(pba->index_bi_rho_fld,pba->has_fld,index_bi,1);
+  class_define_index(pba->index_bi_rho_cdm,pba->has_cdm && pba->has_qrubin,index_bi,1);
+  class_define_index(pba->index_bi_phi_qrubin,pba->has_qrubin,index_bi,1);
+  class_define_index(pba->index_bi_dphi_qrubin,pba->has_qrubin,index_bi,1);
 
   /* -> scalar field and its derivative wrt conformal time (Zuma) */
   class_define_index(pba->index_bi_phi_scf,pba->has_scf,index_bi,1);
@@ -2198,6 +2221,11 @@ int background_initial_conditions(
   }
 
   /* Set initial values of {B} variables: */
+  if (pba->has_qrubin == _TRUE_) {
+    if (pba->has_cdm == _TRUE_) pvecback_integration[pba->index_bi_rho_cdm] = pba->Omega0_cdm*pow(pba->H0,2);
+    pvecback_integration[pba->index_bi_phi_qrubin] = pba->phi0_qrubin;
+    pvecback_integration[pba->index_bi_dphi_qrubin] = 0.0;
+  }
   Omega_rad = pba->Omega0_g;
   if (pba->has_ur == _TRUE_) {
     Omega_rad += pba->Omega0_ur;
@@ -2440,6 +2468,10 @@ int background_output_titles(
   class_store_columntitle(titles,"(.)rho_g",_TRUE_);
   class_store_columntitle(titles,"(.)rho_b",_TRUE_);
   class_store_columntitle(titles,"(.)rho_cdm",pba->has_cdm);
+  class_store_columntitle(titles,"W_qrubin",pba->has_qrubin);
+  class_store_columntitle(titles,"Q_over_H_qrubin",pba->has_qrubin);
+  class_store_columntitle(titles,"phi_qrubin",pba->has_qrubin);
+  class_store_columntitle(titles,"dphi_qrubin",pba->has_qrubin);
   class_store_columntitle(titles,"(.)rho_idm",pba->has_idm);
   if (pba->has_ncdm == _TRUE_) {
     for (n=0; n<pba->N_ncdm; n++) {
@@ -2518,6 +2550,10 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_rho_g],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_b],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_cdm],pba->has_cdm,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_W_qrubin],pba->has_qrubin,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_Q_over_H_qrubin],pba->has_qrubin,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_phi_qrubin],pba->has_qrubin,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_dphi_qrubin],pba->has_qrubin,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_idm],pba->has_idm,storeidx);
     if (pba->has_ncdm == _TRUE_) {
       for (n=0; n<pba->N_ncdm; n++) {
@@ -2618,6 +2654,17 @@ int background_derivs(
 
   /** - Short hand notation for Hubble */
   H = pvecback[pba->index_bg_H];
+  if (pba->has_qrubin == _TRUE_) {
+    double phi_q = y[pba->index_bi_phi_qrubin];
+    double dphi_q = y[pba->index_bi_dphi_qrubin];
+    double W_c = qrubin_activation(a, pba->a_t, pba->n_qrubin);
+    double Q_bar = pow(pba->M_Q, 5.0) * (pba->B0_qrubin * W_c) * phi_q - pow(pba->M_Q, 4.0) * (pba->A0_qrubin * W_c) * H * dphi_q;
+    pvecback[pba->index_bg_Q_over_H_qrubin] = Q_bar / H;
+    dy[pba->index_bi_phi_qrubin] = dphi_q;
+    double dlnH_dlna = -1.5 * (1.0 + pvecback[pba->index_bg_p_tot] / pvecback[pba->index_bg_rho_tot]);
+    dy[pba->index_bi_dphi_qrubin] = - (1.0 / (pba->tau_Q * H) + dlnH_dlna) * dphi_q - ((pba->Gamma0_qrubin * W_c) / (pba->tau_Q * H * H)) * phi_q + ((pba->S0_qrubin * W_c) / (pba->tau_Q * H * H));
+    if (pba->has_cdm == _TRUE_) dy[pba->index_bi_rho_cdm] = pow(a, 3.0) * (Q_bar / H);
+  }
 
   /** - calculate derivative of cosmological time \f$ dt/dloga = 1/H \f$ */
   dy[pba->index_bi_time] = 1./H;
