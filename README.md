@@ -1,3 +1,12 @@
+# Q-Rubin Framework (CLASS Implementation v3.3)
+
+This repository contains the modified **CLASS v3.3.4** code and Python scripts for the Q-Rubin Version 3.3 cosmological framework forward-model tests.
+
+* **Primary Manuscript:** [The Q-Rubin Framework, Version 3.3 (Zenodo)](https://doi.org/10.5281/zenodo.22690445)
+* **DOI:** `10.5281/zenodo.22690445`
+* **Reproducibility Anchor:** Pinned to commit `a36716f1`
+
+---
 CLASS: Cosmic Linear Anisotropy Solving System  {#mainpage}
 ==============================================
 
